@@ -1,0 +1,11 @@
+# Active Role Selection Example
+#
+# To select your active role without modifying the tracked .agent/ACTIVE_ROLE file:
+# 1. Copy this file or create a file named .agent/ACTIVE_ROLE.local
+# 2. Put exactly one of the following lines in that file:
+#
+# project-lead
+# website-developer
+# ai-backend-developer
+#
+# .agent/ACTIVE_ROLE.local is ignored by Git, ensuring local preferences remain private.
