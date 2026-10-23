@@ -1,0 +1,1 @@
+import type { Metadata } from "next"; import "./globals.css"; export const metadata: Metadata = { title: "SoilCast — Soil Moisture Forecast", description: "Soil moisture forecasting and irrigation decision support." }; export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) { return <html lang="en"><body>{children}</body></html>; }
