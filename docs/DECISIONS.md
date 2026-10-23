@@ -35,3 +35,17 @@ This document tracks significant design choices, architectural decisions, and go
 - **Consequences:**
   - Eliminates merge conflicts related to role selection.
   - Allows each developer's coding assistant to cleanly adopt their specific role persona automatically.
+
+---
+
+## ADR-0003: Adoption of `uv` for High-Speed Python Package Management
+- **Date:** 2026-10-17
+- **Status:** APPROVED
+- **Context:**
+  Standard `pip` encounters severe network buffering and progress-bar stalling on Windows when downloading large scientific wheels (such as NumPy, Pandas, and Matplotlib).
+- **Decision:**
+  Adopt Astral's `uv` (`.venv\Scripts\uv.exe`) as the project's primary package management and virtual environment resolution tool.
+- **Consequences:**
+  - 10-100x faster package resolution and parallel wheel installation.
+  - Clean non-blocking terminal execution on Windows.
+  - Consistent dependency locking and virtual environment reproducibility across development sessions.

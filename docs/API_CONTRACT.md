@@ -1,17 +1,18 @@
-# API Contract Specification (Preliminary)
+# API Contract Specification — Frozen Model Handoff
 
-> [!NOTE]
-> This contract specification defines the planned interface between the FastAPI backend and Next.js frontend. It will be finalized and frozen during **Phase 5 (Model Handoff)** once model input shapes and features are approved by the Project Lead.
+> [!IMPORTANT]
+> **Status: FROZEN & APPROVED (Phase 5 Model Handoff — 2026-10-23)**
+> This contract defines the strict production interface for Rahul's FastAPI service (`backend/`) and Ram Charan's Next.js web application (`frontend/`). No fields, feature orders, or units may be modified without Project Lead approval.
 
 ---
 
 ## 1. Endpoints Overview
 
-| Method | Path | Description | Phase Available |
-| :--- | :--- | :--- | :--- |
-| `GET` | `/health` | Service health status and model load confirmation | Phase 6 |
-| `POST` | `/api/v1/predict` | 24-hour soil moisture forecast prediction | Phase 6 |
-| `GET` | `/api/v1/metrics` | Model performance benchmark metrics | Phase 6 |
+| Method | Path | Description | Producer | Consumer |
+| :--- | :--- | :--- | :--- | :--- |
+| `GET` | `/health` | Service health status and model load confirmation | Backend (Rahul) | Frontend (Ram Charan) |
+| `POST` | `/api/v1/predict` | 24-hour soil moisture forecast prediction | Backend (Rahul) | Frontend (Ram Charan) |
+| `GET` | `/api/v1/metrics` | Model performance benchmark metrics | Backend (Rahul) | Frontend (Ram Charan) |
 
 ---
 
@@ -23,8 +24,10 @@
 {
   "status": "healthy",
   "model_loaded": true,
-  "model_version": "lstm-v1",
-  "timestamp": "2026-10-17T10:00:00Z"
+  "model_version": "SoilMoistureLSTM-v1",
+  "features_count": 5,
+  "device": "cpu",
+  "timestamp": "2026-10-23T16:00:00Z"
 }
 ```
 
@@ -33,18 +36,22 @@
 ## 3. Predict Endpoint
 
 ### `POST /api/v1/predict`
-Accepts a sequence of the past $T$ observations (e.g., 96 steps of 15-minute data = 24 hours) and returns a 24-hour forward prediction curve for `SM_50cm`.
+Accepts a chronological sequence of the past 96 observations ($\Delta t = 15 \text{ min}$, exactly 24 hours of inputs) and returns the forecasted `SM_50cm` value 24 hours ahead ($t + 96$).
 
-#### Request Schema:
+#### Request Schema (`application/json`):
 ```json
 {
-  "timestamps": ["2026-10-16T10:00:00Z", "..."],
+  "timestamps": [
+    "2026-10-22T10:00:00Z",
+    "... exactly 96 ISO-8601 timestamps monotonically increasing by 15 mins ...",
+    "2026-10-23T09:45:00Z"
+  ],
   "features": {
-    "SM_50cm": [0.24, 0.241, "..."],
-    "rainfall": [0.0, 0.0, "..."],
-    "temperature": [28.5, 28.7, "..."],
-    "relative_humidity": [65.0, 64.5, "..."],
-    "solar_radiation": [450.0, 460.0, "..."]
+    "SM_50cm": [15.2, 15.22, "... 96 float values (% VWC) ..."],
+    "SM_5cm": [17.8, 17.85, "... 96 float values (% VWC) ..."],
+    "Temp_50cm": [25.1, 25.12, "... 96 float values (°C) ..."],
+    "Temp_5cm": [24.8, 24.84, "... 96 float values (°C) ..."],
+    "Precipitation": [0.0, 0.0, "... 96 float values (mm/15min) ..."]
   }
 }
 ```
@@ -52,23 +59,63 @@ Accepts a sequence of the past $T$ observations (e.g., 96 steps of 15-minute dat
 #### Response Schema (`200 OK`):
 ```json
 {
+  "status": "success",
   "forecast_horizon_hours": 24,
   "target_variable": "SM_50cm",
-  "unit": "m3/m3",
-  "forecast_timestamps": ["2026-10-17T10:15:00Z", "... 96 steps ..."],
-  "predictions": [0.239, 0.238, "..."],
-  "irrigation_recommendation": {
-    "recommended": false,
+  "units": "% Volumetric Water Content (VWC)",
+  "input_window_end": "2026-10-23T09:45:00Z",
+  "forecast_timestamp": "2026-10-24T09:45:00Z",
+  "predicted_sm_50cm": 15.48,
+  "current_sm_50cm": 15.20,
+  "predicted_change_24h": 0.28,
+  "irrigation_advisory": {
+    "recommendation": "OPTIMAL_MOISTURE",
+    "action_required": false,
     "urgency": "none",
-    "threshold_value": 0.18,
-    "current_value": 0.24,
-    "predicted_min": 0.235,
-    "explanation": "Soil moisture at 50cm is projected to remain comfortably above the critical wilting point threshold of 0.18 m3/m3 for the next 24 hours."
+    "current_value": 15.20,
+    "predicted_value": 15.48,
+    "optimal_range_min": 18.0,
+    "optimal_range_max": 28.0,
+    "wilting_point": 10.0,
+    "field_capacity": 35.0,
+    "explanation": "Soil moisture at 50 cm root zone is projected to remain stable at 15.48% VWC over the next 24 hours. No immediate irrigation required."
   }
 }
 ```
 
-#### Error Responses:
-- `400 Bad Request`: Input sequence length incorrect, feature ordering invalid, or non-finite values (`NaN`, `Inf`) detected.
-- `422 Unprocessable Entity`: Schema validation failure.
-- `503 Service Unavailable`: Model artifact failed to load or is not yet initialized.
+#### Error Handling Responses:
+- `400 Bad Request`: Input sequence length $\ne 96$, missing feature arrays, or non-finite numbers (`NaN`, `Inf`).
+- `422 Unprocessable Entity`: Timestamps are not monotonically increasing by 15-minute intervals.
+- `503 Service Unavailable`: Model weights (`models/best_model.pt`) or scalers failed to initialize at startup.
+
+---
+
+## 4. Metrics Endpoint
+
+### `GET /api/v1/metrics`
+Returns verified empirical benchmark metrics across test evaluation:
+
+#### Response Schema (`200 OK`):
+```json
+{
+  "test_dataset": "Held-Out Unseen Test Split (Jan 1, 2024 – Jun 30, 2025)",
+  "total_test_samples": 52014,
+  "models": {
+    "persistence_baseline": {
+      "mae": 0.6949,
+      "rmse": 1.4206,
+      "r2": 0.8303
+    },
+    "univariate_lstm": {
+      "mae": 0.6639,
+      "rmse": 1.2772,
+      "r2": 0.8628
+    },
+    "multivariate_lstm_champion": {
+      "mae": 0.7271,
+      "rmse": 1.2798,
+      "r2": 0.8623
+    }
+  }
+}
+```

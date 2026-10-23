@@ -2,11 +2,13 @@
 
 - **Owner:** Ram Charan
 - **Role Identifier:** `website-developer`
+- **Assigned Phase:** **Phase 7 (Website Development)**
+- **External Repository Source:** `https://github.com/ramcharan-git123/Deep-Learning-Based-Soil-Moisture-Prediction-for-Smart-Irrigation`
 - **Reference Files:**
   - [.agent/GLOBAL_RULES.md](file:///c:/Users/raksh/ANN/.agent/GLOBAL_RULES.md)
   - [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) (Phase 7 Focus)
   - [.agent/PROJECT_STATE.md](file:///c:/Users/raksh/ANN/.agent/PROJECT_STATE.md)
-  - [docs/API_CONTRACT.md](file:///c:/Users/raksh/ANN/docs/API_CONTRACT.md)
+  - [docs/API_CONTRACT.md](file:///c:/Users/raksh/ANN/docs/API_CONTRACT.md) (Frozen Contract)
 
 ---
 

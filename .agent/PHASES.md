@@ -148,7 +148,7 @@ This document defines the 10 sequential phases of the project. Every phase has a
 ---
 
 ## Phase 8: Integration
-- **Owner:** Project Lead (supported by Ram Charan and Rahul)
+- **Owner:** Rahul (Backend & Integration Developer, supported by Ram Charan)
 - **Dependencies:** Phase 6 and Phase 7 approved complete.
 - **Acceptance Criteria:**
   - Connect Next.js frontend to FastAPI backend via configured environment variables.
@@ -164,7 +164,7 @@ This document defines the 10 sequential phases of the project. Every phase has a
 ---
 
 ## Phase 9: Final Validation & Demonstration
-- **Owner:** Project Lead (with full team)
+- **Owner:** Rahul (with full team)
 - **Dependencies:** Phase 8 approved complete.
 - **Acceptance Criteria:**
   - Run all automated test suites (ML, backend, frontend, E2E).

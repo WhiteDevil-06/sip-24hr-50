@@ -1,0 +1,44 @@
+{
+  "feature_cols": [
+    "SM_50cm",
+    "SM_5cm",
+    "Temp_50cm",
+    "Temp_5cm",
+    "Precipitation"
+  ],
+  "target_col": "SM_50cm",
+  "window_size": 96,
+  "horizon": 96,
+  "features_min": [
+    0.0,
+    0.0,
+    16.861,
+    15.0,
+    0.0
+  ],
+  "features_max": [
+    55.0,
+    56.0,
+    33.8,
+    35.7,
+    26.8
+  ],
+  "features_scale": [
+    0.01818181818181818,
+    0.017857142857142856,
+    0.059035362181947,
+    0.048309178743961345,
+    0.03731343283582089
+  ],
+  "features_min_offset": [
+    0.0,
+    0.0,
+    -0.9953952417498084,
+    -0.7246376811594202,
+    0.0
+  ],
+  "target_min": 0.0,
+  "target_max": 55.0,
+  "target_scale": 0.01818181818181818,
+  "target_min_offset": 0.0
+}

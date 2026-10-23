@@ -19,17 +19,17 @@ The final software application will deliver:
 
 ## 2. Team Structure & Ownership Boundaries
 
-| Role | Owner | Primary Responsibilities | Strict Prohibitions |
+| Role | Owner | Primary Responsibilities | Assigned Phases |
 | :--- | :--- | :--- | :--- |
-| **Role A: Project Lead, AI Developer & Integration Owner** | You (Me) | Understands ML theory, implements data preprocessing, Persistence baseline, builds & trains LSTM in guided steps, evaluates metrics, creates model handoff package, coordinates integration. | Must not be given bulk unexplained code. Learning and full comprehension are mandatory. |
-| **Role B: Website Developer** | Ram Charan | Next.js (App Router), TypeScript, Tailwind CSS, Recharts dashboard, metrics display, responsive UI states (loading, empty, error). | Must never invent model outputs, mock metrics as real, or modify backend/model. |
-| **Role C: Backend & Model-Serving Developer** | Rahul | Python FastAPI serving service, loads saved model artifact, applies exact approved preprocessing, enforces request validation, ensures inference parity. | Must NOT retrain model, change architecture, alter features, or fabricate predictions. |
+| **Role A: Project Lead & AI Developer** | You (Me) | Understands ML theory, implements data preprocessing, Persistence baseline, builds & trains PyTorch LSTM, evaluates metrics, creates model handoff package, comprehensive educational study report. | **Phases 0, 1, 2, 3, 4, 5 (COMPLETED)** |
+| **Role B: Website Developer** | Ram Charan | Next.js (App Router), TypeScript, Tailwind CSS, Recharts dashboard, metrics display, responsive UI states. (Code ready in external repo, to be imported & tested). | **Phase 7 (Website Development)** |
+| **Role C: Backend & Integration Developer** | Rahul | Python FastAPI serving service, loads saved model artifact, applies exact approved preprocessing, enforces request validation, ensures inference parity, E2E integration, and final demonstration. | **Phases 6, 8, 9 (Backend, Integration, Validation)** |
 
 ---
 
 ## 3. Technology Stack
 
-- **AI & Preprocessing (Project Lead):** Python 3.13, NumPy, Pandas, scikit-learn, TensorFlow / Keras, Pytest.
+- **AI & Preprocessing (Project Lead):** Python 3.13, PyTorch 2.14, NumPy, Pandas, scikit-learn, Pytest.
 - **Backend Serving (Rahul):** Python 3.13, FastAPI, Pydantic, Uvicorn, Pytest.
 - **Frontend Dashboard (Ram Charan):** Next.js (App Router), React, TypeScript (strict), Tailwind CSS, Recharts.
 - **Engineering Quality:** Git, isolated virtual environment, strict phase gates, ADR documentation, typed API contracts.
@@ -67,16 +67,16 @@ echo project-lead > .agent/ACTIVE_ROLE.local
 
 The project advances through 10 strictly gated phases. Advancing to the next phase requires explicit human sign-off from the Project Lead.
 
-- **Phase 0:** Project and Agent-System Initialization *(Current Active Phase)*
-- **Phase 1:** Dataset Audit
-- **Phase 2:** Preprocessing Pipeline
-- **Phase 3:** Persistence Baseline
-- **Phase 4:** LSTM Learning and Implementation
-- **Phase 5:** Experiments and Model Evaluation
-- **Phase 6:** Backend and Model Serving
-- **Phase 7:** Website Development
-- **Phase 8:** Integration
-- **Phase 9:** Final Validation and Demonstration
+- **Phase 0:** Project and Agent-System Initialization *(APPROVED COMPLETE)*
+- **Phase 1:** Dataset Audit *(APPROVED COMPLETE)*
+- **Phase 2:** Preprocessing Pipeline *(APPROVED COMPLETE)*
+- **Phase 3:** Persistence Baseline *(APPROVED COMPLETE)*
+- **Phase 4:** LSTM Learning and Implementation *(APPROVED COMPLETE)*
+- **Phase 5:** Experiments and Model Evaluation *(APPROVED COMPLETE)*
+- **Phase 6:** Backend and Model Serving *(Active Phase — Rahul)*
+- **Phase 7:** Website Development *(Ready for Import — Ram Charan)*
+- **Phase 8:** Integration *(Rahul & Ram Charan)*
+- **Phase 9:** Final Validation and Demonstration *(Rahul & Team)*
 
 See [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) and [.agent/PROJECT_STATE.md](file:///c:/Users/raksh/ANN/.agent/PROJECT_STATE.md) for full status.
 

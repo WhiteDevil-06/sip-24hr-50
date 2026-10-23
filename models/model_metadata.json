@@ -1,0 +1,36 @@
+{
+  "model_architecture": "SoilMoistureLSTM",
+  "input_features": [
+    "SM_50cm",
+    "SM_5cm",
+    "Temp_50cm",
+    "Temp_5cm",
+    "Precipitation"
+  ],
+  "target_variable": "SM_50cm",
+  "input_sequence_length": 96,
+  "forecast_horizon_steps": 96,
+  "time_interval_minutes": 15,
+  "forecast_horizon_hours": 24,
+  "units": "% Volumetric Water Content (VWC)",
+  "model_weights_file": "best_model.pt",
+  "feature_scaler_file": "feature_scaler.pkl",
+  "target_scaler_file": "target_scaler.pkl",
+  "scaler_json_file": "scaler_metadata.json",
+  "test_metrics": {
+    "mae": 0.7271,
+    "rmse": 1.2798,
+    "r2": 0.8623
+  },
+  "validation_metrics": {
+    "mae": 0.6594,
+    "rmse": 1.5628,
+    "r2": 0.8268
+  },
+  "irrigation_thresholds": {
+    "wilting_point_vwc": 10.0,
+    "field_capacity_vwc": 35.0,
+    "optimal_range_min_vwc": 18.0,
+    "optimal_range_max_vwc": 28.0
+  }
+}

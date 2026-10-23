@@ -26,11 +26,11 @@ Every agent or developer beginning a session in this repository **MUST** read in
 - **Procedural Reviews:** All specialist reviews (Code Reviewer, Test Validator, Security, Data Quality, ML Integrity, Frontend, Backend, Integration, Documentation) must be executed as **explicit, documented procedural checklists**. Never report or pretend a self-review was an independent subagent execution.
 
 ## 3. Strict Ownership Boundaries
-- **Project Lead (You / Me):** Owns AI/ML learning, data preprocessing, baseline, LSTM training, evaluation, model handoff artifact, and final integration. Guided step-by-step; never hand off unexplained bulk code.
-- **Ram Charan (Website Developer):** Owns Next.js + Tailwind CSS + Recharts dashboard. Consumes approved API contract. Must never invent model outputs or metrics.
-- **Rahul (Backend & Model-Serving Developer):** Owns FastAPI inference service. Loads saved trained model artifact without retraining. Strictly prohibited from retraining, altering architecture, or inventing predictions.
+- **Project Lead (You / Me):** Owns AI/ML learning, data preprocessing, baseline, LSTM training, evaluation, model handoff artifact, and educational study documentation (**Phases 0 through 5 — COMPLETED**).
+- **Ram Charan (Website Developer):** Owns Next.js + Tailwind CSS + Recharts dashboard (**Phase 7 — Built in external repo, to be imported & tested**). Consumes approved API contract. Must never invent model outputs or metrics.
+- **Rahul (Backend, Integration & Final Validation Developer):** Owns FastAPI inference service, frontend-backend integration, and final demonstration (**Phases 6, 8, 9**). Loads saved trained model artifact without retraining. Strictly prohibited from retraining, altering architecture, or inventing predictions.
 
 ## 4. Phase Gate Protocol
 - Never proceed past a phase boundary without explicit human approval from the Project Lead.
-- Current active phase: **Phase 0 (Project & Agent-System Initialization)**.
-- No code for preprocessing, LSTM, FastAPI, or Next.js may be implemented during Phase 0.
+- Current active phase: **Phase 6 (Backend & Model Serving)**.
+- Phases 0 through 5 are completed and verified with empirical benchmarks and automated tests.

@@ -2,11 +2,14 @@
 
 - **Owner:** You (Me)
 - **Role Identifier:** `project-lead`
+- **Completed Phases:** **Phases 0, 1, 2, 3, 4, 5 (APPROVED COMPLETE)**
 - **Reference Files:**
   - [.agent/GLOBAL_RULES.md](file:///c:/Users/raksh/ANN/.agent/GLOBAL_RULES.md)
   - [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md)
   - [.agent/PROJECT_STATE.md](file:///c:/Users/raksh/ANN/.agent/PROJECT_STATE.md)
-  - [.agent/AGENT_REGISTRY.md](file:///c:/Users/raksh/ANN/.agent/AGENT_REGISTRY.md)
+  - [docs/STUDY_REPORT.md](file:///c:/Users/raksh/ANN/docs/STUDY_REPORT.md) (Self-Paced Comprehensive Learning Guide)
+  - [docs/EXPERIMENTS.md](file:///c:/Users/raksh/ANN/docs/EXPERIMENTS.md) (Empirical Benchmark Registry)
+  - [docs/EDA_REPORT.md](file:///c:/Users/raksh/ANN/docs/EDA_REPORT.md) (Phase 1 Dataset Audit)
 
 ---
 

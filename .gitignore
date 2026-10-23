@@ -54,6 +54,8 @@ data/processed/*
 *.joblib
 *.pt
 *.onnx
+!models/*.pt
+!models/*.pkl
 
 # IDE & OS
 .vscode/

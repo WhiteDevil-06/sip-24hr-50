@@ -2,38 +2,52 @@
 
 - **Owner:** Rahul
 - **Role Identifier:** `ai-backend-developer`
+- **Assigned Phases:**
+  - **Phase 6:** Backend & Model Serving (FastAPI Service)
+  - **Phase 8:** Integration (Connecting Frontend and Backend, CORS, E2E Request/Response verification)
+  - **Phase 9:** Final Validation & Demonstration (Comprehensive testing, final system validation)
 - **Reference Files:**
   - [.agent/GLOBAL_RULES.md](file:///c:/Users/raksh/ANN/.agent/GLOBAL_RULES.md)
-  - [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) (Phase 6 Focus)
+  - [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) (Phases 6, 8, 9 Focus)
   - [.agent/PROJECT_STATE.md](file:///c:/Users/raksh/ANN/.agent/PROJECT_STATE.md)
-  - [docs/API_CONTRACT.md](file:///c:/Users/raksh/ANN/docs/API_CONTRACT.md)
+  - [docs/API_CONTRACT.md](file:///c:/Users/raksh/ANN/docs/API_CONTRACT.md) (Frozen Contract)
+  - [models/model_metadata.json](file:///c:/Users/raksh/ANN/models/model_metadata.json) (Handoff Metadata)
+  - [scripts/verify_handoff.py](file:///c:/Users/raksh/ANN/scripts/verify_handoff.py) (Handoff Test Script)
 
 ---
 
 ## 1. Responsibilities & Scope
 
+### Phase 6: FastAPI Backend & Model Serving
 - Build the Python **FastAPI** backend in `backend/`.
-- Load and serve the approved model artifact trained by the Project Lead.
-- Load the model and preprocessing artifacts strictly once at application startup.
-- Connect API prediction requests to the loaded model's inference pipeline.
+- Load the approved model artifact (`models/best_model.pt`) and scalers strictly once at application startup using lifespan context manager.
+- Implement `/health`, `/api/v1/predict`, and `/api/v1/metrics` endpoints per `docs/API_CONTRACT.md`.
 - Enforce strict request payload validation with **Pydantic**:
-  - Verify sequence lengths, feature ordering, timestamp monotonicity, and data types.
-- Apply the exact approved preprocessing transformations (scalers, imputers) provided in the handoff contract.
+  - Verify sequence lengths (exactly 96 steps), feature ordering (5 features), timestamp monotonicity, and finite float values.
+- Apply the exact approved preprocessing transformations (`models/scaler_metadata.json` or `feature_scaler.pkl`).
 - Return typed, documented prediction responses matching the API contract.
-- Implement `/health` and status endpoints.
-- Handle invalid requests, non-finite values, and internal exceptions gracefully with appropriate HTTP status codes (e.g., 400 for bad input, 503 for uninitialized model).
-- Write automated tests verifying that backend inference matches direct inference from the approved saved model artifact within float precision ($< 10^{-5}$).
+- Write automated tests verifying that backend inference matches direct PyTorch inference within float precision ($< 10^{-5}$).
+
+### Phase 8: End-to-End Integration
+- Connect Next.js frontend (`frontend/`) to FastAPI backend (`backend/`) via environment variables (`NEXT_PUBLIC_API_URL`).
+- Configure CORS, verify low latency ($< 150 \text{ ms}$), and validate live request/response data rendering.
+- Verify that displayed predictions on the dashboard match backend inference exactly.
+
+### Phase 9: Final Validation & Demonstration
+- Run automated unit and integration tests across ML, backend, and frontend.
+- Validate system reliability under offline, malformed, and edge-case network inputs.
+- Ensure all technical documentation is aligned for final demonstration.
 
 ---
 
 ## 2. Model Handoff Contract Protocol
 Before beginning backend implementation, Rahul must verify the existence and integrity of:
-1. Approved trained model artifact file (e.g., `.keras` or `.h5`).
-2. Preprocessing scalers/artifacts or exact approved preprocessing code.
-3. Feature names, ordering, and input sequence shape (e.g., `[batch, 96, n_features]`).
-4. Forecast horizon definition ($t+96$).
-5. Scaling and inverse-scaling parameters.
-6. A set of approved input/output test fixtures for parity verification.
+1. Approved trained model artifact file (`models/best_model.pt` PyTorch model weights).
+2. Preprocessing scalers and artifacts (`models/feature_scaler.pkl`, `models/target_scaler.pkl`, and `models/scaler_metadata.json`).
+3. Feature names, ordering, and input sequence shape (verified: `[batch, 96, 5]` features: `SM_50cm`, `Rainfall`, `Air_Temp`, `RH`, `Solar_Rad`).
+4. Forecast horizon definition ($t+96$ = 24 hours ahead at 15-minute intervals).
+5. Scaling and inverse-scaling parameters (frozen in `models/scaler_metadata.json` and `docs/API_CONTRACT.md`).
+6. Approved input/output test fixtures for parity verification (validated by `scripts/verify_handoff.py`).
 
 If any handoff artifact is missing or incomplete, Rahul must report the blocker rather than inventing artifacts or parameters.
 
