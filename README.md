@@ -113,3 +113,28 @@ See [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) and [.agent/
 ├── GEMINI.md                  # Dual tool instructions pointer
 └── README.md                  # This file
 ```
+
+---
+
+## 7. Running the Application
+
+### 1. Launch Backend (FastAPI Model Service)
+`ash
+python backend/run.py
+# Backend runs on http://localhost:8000
+# OpenAPI Docs: http://localhost:8000/docs
+# Health check: http://localhost:8000/health
+`
+
+### 2. Launch Frontend (Next.js Dashboard)
+`ash
+cd frontend
+npm run dev
+# Dashboard opens on http://localhost:3000
+`
+
+### 3. Run Automated Verification Suite
+`ash
+python -m pytest tests/ -v
+# Runs all 34 unit, ML integrity, API, CORS, and security tests
+`

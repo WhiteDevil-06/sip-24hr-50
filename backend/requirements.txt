@@ -1,0 +1,4 @@
+uvicorn
+fastapi
+pydantic>=2
+numpy
