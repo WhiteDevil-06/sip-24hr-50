@@ -69,6 +69,21 @@ app.add_middleware(
 )
 
 
+@app.get("/", tags=["root"])
+def root() -> dict:
+    """Root entry point providing quick links to service endpoints."""
+    return {
+        "service": "SoilCast — Soil Moisture Forecasting API",
+        "status": "online",
+        "version": "1.0.0",
+        "docs_url": "/docs",
+        "health_url": "/health",
+        "forecast_url": "/api/forecast",
+        "metrics_url": "/api/v1/metrics",
+        "predict_url": "/api/v1/predict",
+    }
+
+
 
 
 # ---------------------------------------------------------------------------
