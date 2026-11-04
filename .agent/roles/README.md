@@ -15,3 +15,4 @@ This directory defines the explicit responsibility boundaries and strict operati
 2. Cloned repositories default to `project-lead`.
 3. When Ram Charan or Rahul clone the repo, they set their role by creating `.agent/ACTIVE_ROLE.local` containing `website-developer` or `ai-backend-developer`.
 4. Any coding agent MUST read the active role file upon session start and enforce that role's boundaries strictly.
+ 
