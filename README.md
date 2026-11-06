@@ -136,7 +136,7 @@ npm run dev
 ### 3. Run Automated Verification Suite
 ```bash
 python -m pytest tests/ -v
-# Runs all 34 unit, ML integrity, API, CORS, and security tests
+# Runs all 42 unit, ML integrity, API, CORS, and security tests
 ```
 
 ---
@@ -163,9 +163,21 @@ The FastAPI backend exposes typed REST endpoints documented interactively at `ht
 | :--- | :--- | :--- |
 | `GET` | `/health` | Service status, device, model version, and startup verification |
 | `POST` | `/api/v1/predict` | 24-hour forecast from 96 historical observations |
+| `GET` | `/api/v1/historical-samples` | Catalog of 5 real 2024 test split episodes with retrospective targets |
+| `GET` | `/api/v1/historical-samples/{id}` | Full 96-step sequence (5 features) for historical test replay |
 | `GET` | `/api/v1/metrics` | Empirical evaluation benchmarks across models |
 | `GET` | `/api/forecast` | Dashboard-ready payload for Next.js frontend |
 | `GET` | `/api/health` | Health alias for dashboard connectivity indicator |
+
+### 10. Operational Modes in Web Dashboard
+
+The web dashboard provides two primary operational modes:
+1. **Mode A: Custom Simulation**:
+   - Allows users to simulate distinct agricultural weather scenarios (Summer Drought, Monsoon Infiltration, Post-Irrigation Drying) or interactively adjust moisture, temperature, and rainfall sliders to test edge cases.
+2. **Mode B: Historical Dataset Replay**:
+   - Replays 5 real test episodes extracted directly from the IISc Berambadi watershed test set (2024).
+   - Features zero-lookahead inference: only past 96 steps are sent to the LSTM model.
+   - Retrospective Ground-Truth Comparison: Automatically calculates and displays the error between the LSTM's 24-hour advance forecast ($\hat{y}$) and the actual moisture recorded in the field 24 hours later ($y$).
 
 ### Numerical Parity Guarantee
 Backend API predictions match direct PyTorch offline model inference within float precision:

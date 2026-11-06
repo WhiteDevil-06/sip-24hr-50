@@ -22,6 +22,7 @@ import {
   FlaskConical,
   Gauge,
   HelpCircle,
+  History,
   Info,
   Layers,
   LayoutDashboard,
@@ -53,8 +54,12 @@ import {
 } from "recharts";
 import {
   checkApiHealth,
+  fetchHistoricalSample,
+  fetchHistoricalSamples,
   getApiConfigured,
   runPrediction,
+  type HistoricalSampleDetail,
+  type HistoricalSampleSummary,
   type IrrigationAdvisory,
   type PredictPayload,
   type PredictResponse,
@@ -133,6 +138,74 @@ const PRESET_SCENARIOS: ScenarioConfig[] = [
   },
 ];
 
+const DEFAULT_HISTORICAL_SUMMARIES: HistoricalSampleSummary[] = [
+  {
+    id: "HIST-001-DROUGHT",
+    title: "Summer Drought Water Stress (May 2024)",
+    badge: "Water Stress",
+    badgeColor: "bg-amber-100 text-amber-800 border-amber-300",
+    description: "Pre-monsoon summer dry period with high thermal load (33°C). Root moisture is depleted (12.1%), requiring irrigation.",
+    input_start: "2024-05-06 16:30:00",
+    input_end: "2024-05-07 16:15:00",
+    target_timestamp: "2024-05-08T16:15:00",
+    current_sm_50cm: 12.1,
+    actual_future_sm_50cm: 13.5,
+    historical_rain_24h_mm: 0.0,
+  },
+  {
+    id: "HIST-002-MONSOON",
+    title: "Monsoon Infiltration Wavefront (July 2024)",
+    badge: "Infiltration Surge",
+    badgeColor: "bg-blue-100 text-blue-800 border-blue-300",
+    description: "Major monsoon precipitation event (26.3 mm). Deep infiltration wavefront recharges 50 cm root zone.",
+    input_start: "2024-07-15 03:00:00",
+    input_end: "2024-07-16 02:45:00",
+    target_timestamp: "2024-07-17T02:45:00",
+    current_sm_50cm: 20.3,
+    actual_future_sm_50cm: 21.7,
+    historical_rain_24h_mm: 26.3,
+  },
+  {
+    id: "HIST-003-STABLE",
+    title: "Post-Monsoon Soil Equilibrium (Oct 2024)",
+    badge: "Optimal Dynamic",
+    badgeColor: "bg-emerald-100 text-emerald-800 border-emerald-300",
+    description: "Stable moisture in the 18–20% optimal zone under moderate autumn temperatures (22–24°C). Zero rainfall.",
+    input_start: "2024-10-25 15:45:00",
+    input_end: "2024-10-26 15:30:00",
+    target_timestamp: "2024-10-27T15:30:00",
+    current_sm_50cm: 19.2,
+    actual_future_sm_50cm: 18.9,
+    historical_rain_24h_mm: 0.0,
+  },
+  {
+    id: "HIST-004-WETTING",
+    title: "Early Monsoon Soil Rehydration (July 2024)",
+    badge: "Moisture Recovery",
+    badgeColor: "bg-cyan-100 text-cyan-800 border-cyan-300",
+    description: "First arrival of monsoon infiltration wetting front after initial dry spell. Root moisture begins rising.",
+    input_start: "2024-07-04 12:45:00",
+    input_end: "2024-07-05 12:30:00",
+    target_timestamp: "2024-07-06T12:30:00",
+    current_sm_50cm: 13.2,
+    actual_future_sm_50cm: 16.4,
+    historical_rain_24h_mm: 0.5,
+  },
+  {
+    id: "HIST-005-WINTER",
+    title: "Dry Winter Depletion Cycle (Feb 2024)",
+    badge: "Slow Depletion",
+    badgeColor: "bg-indigo-100 text-indigo-800 border-indigo-300",
+    description: "Typical cool, dry post-harvest period. Gradual moisture drain from 15.5% toward deficit threshold.",
+    input_start: "2024-02-12 08:30:00",
+    input_end: "2024-02-13 08:15:00",
+    target_timestamp: "2024-02-14T08:15:00",
+    current_sm_50cm: 15.5,
+    actual_future_sm_50cm: 14.6,
+    historical_rain_24h_mm: 0.0,
+  },
+];
+
 const NAV_ITEMS: { label: Page; icon: any; hint: string }[] = [
   {
     label: "Simulation & Inference",
@@ -157,7 +230,7 @@ const NAV_ITEMS: { label: Page; icon: any; hint: string }[] = [
   {
     label: "Scenario Data",
     icon: Database,
-    hint: "Inspect, filter, and export the 96-observation sequence.",
+    hint: "Inspect, paginate, filter, and export the 96-observation sequence.",
   },
 ];
 
@@ -235,7 +308,10 @@ export default function Home() {
   const [apiConnected, setApiConnected] = useState<boolean>(true);
   const [busy, setBusy] = useState<boolean>(false);
 
-  // Active scenario state
+  // Mode Selection: Synthetic Custom Simulation vs Historical Dataset Replay
+  const [inputMode, setInputMode] = useState<"simulation" | "historical">("simulation");
+
+  // Active scenario state (Simulation mode)
   const [selectedScenario, setSelectedScenario] = useState<ScenarioKey>("drought");
   const [customSM50, setCustomSM50] = useState<number>(18.5);
   const [customSM5, setCustomSM5] = useState<number>(20.0);
@@ -243,18 +319,26 @@ export default function Home() {
   const [customT5, setCustomT5] = useState<number>(28.0);
   const [customRain, setCustomRain] = useState<number>(10.0);
 
+  // Historical replay state (Historical mode)
+  const [historicalSamples, setHistoricalSamples] = useState<HistoricalSampleSummary[]>(DEFAULT_HISTORICAL_SUMMARIES);
+  const [selectedHistoricalId, setSelectedHistoricalId] = useState<string>("HIST-001-DROUGHT");
+  const [activeHistoricalDetail, setActiveHistoricalDetail] = useState<HistoricalSampleDetail | null>(null);
+
   // Inference state
   const [currentInput, setCurrentInput] = useState<PredictPayload | null>(null);
   const [prediction, setPrediction] = useState<PredictResponse | null>(null);
   const [evalTab, setEvalTab] = useState<"comparison" | "theory" | "metrics">("comparison");
 
-  // Search & Filter in Data Table
+  // Search, Filter & Pagination in Data Table
   const [searchQuery, setSearchQuery] = useState<string>("");
   const [sortAsc, setSortAsc] = useState<boolean>(true);
+  const [tablePage, setTablePage] = useState<number>(1);
+  const PAGE_SIZE = 25;
 
-  // Run simulation on scenario change or mount
+  // Run simulation on synthetic scenario change or mount
   async function triggerSimulation(scenarioId: ScenarioKey) {
     setBusy(true);
+    setActiveHistoricalDetail(null);
     try {
       let payloadInput: PredictPayload;
       if (scenarioId === "custom") {
@@ -271,10 +355,21 @@ export default function Home() {
         setPrediction(res);
         setApiConnected(true);
       } else {
-        // Fallback local calculation if backend disconnected
+        // Fallback local calculation if backend disconnected (Threshold aligned with Phase 3 Contract)
         const currentSM = payloadInput.features.SM_50cm.at(-1)!;
         const delta = scenarioId === "storm" ? +1.8 : scenarioId === "drought" ? -0.9 : -0.2;
         const predVal = Number((currentSM + delta).toFixed(2));
+        const rec =
+          predVal < 10.0
+            ? "CRITICAL_DEFICIT"
+            : predVal < 18.0
+            ? "DEFICIT_ALERT"
+            : predVal > 35.0
+            ? "EXCESS_MOISTURE"
+            : "OPTIMAL_MOISTURE";
+        const action = predVal < 18.0;
+        const urgency = predVal < 10.0 ? "emergency" : predVal < 18.0 ? "high" : "none";
+
         setPrediction({
           status: "success",
           forecast_horizon_hours: 24,
@@ -286,16 +381,20 @@ export default function Home() {
           current_sm_50cm: currentSM,
           predicted_change_24h: Number((predVal - currentSM).toFixed(2)),
           irrigation_advisory: {
-            recommendation: predVal < 14 ? "DEFICIT_ALERT" : predVal > 35 ? "EXCESS_MOISTURE" : "OPTIMAL_MOISTURE",
-            action_required: predVal < 14,
-            urgency: predVal < 14 ? "high" : "none",
+            recommendation: rec,
+            action_required: action,
+            urgency,
             current_value: currentSM,
             predicted_value: predVal,
             optimal_range_min: 18.0,
-            optimal_range_max: 28.0,
+            optimal_range_max: 35.0,
             wilting_point: 10.0,
             field_capacity: 35.0,
-            explanation: `Simulated moisture at 50 cm root zone projected at ${predVal}% VWC over 24 hours.`,
+            explanation: `Simulated root moisture projected at ${predVal}% VWC over 24 hours. ${
+              action
+                ? "Depletion below 18% threshold; scheduling irrigation recommended."
+                : "Moisture within optimal agronomic operating band."
+            }`,
           },
         });
       }
@@ -306,9 +405,51 @@ export default function Home() {
     }
   }
 
+  // Trigger historical replay with actual 2024 test data
+  async function triggerHistoricalReplay(sampleId: string) {
+    setBusy(true);
+    setSelectedHistoricalId(sampleId);
+    try {
+      const detail = await fetchHistoricalSample(sampleId);
+      if (detail) {
+        setActiveHistoricalDetail(detail);
+        const payloadInput: PredictPayload = {
+          timestamps: detail.timestamps,
+          features: detail.features,
+        };
+        setCurrentInput(payloadInput);
+
+        const res = await runPrediction(payloadInput);
+        if (res) {
+          setPrediction(res);
+          setApiConnected(true);
+        }
+      }
+    } catch {
+      setApiConnected(false);
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  // Switch between Custom Simulation and Historical Replay
+  function handleModeChange(mode: "simulation" | "historical") {
+    setInputMode(mode);
+    if (mode === "simulation") {
+      void triggerSimulation(selectedScenario);
+    } else {
+      void triggerHistoricalReplay(selectedHistoricalId);
+    }
+  }
+
   useEffect(() => {
     void triggerSimulation("drought");
     void checkApiHealth().then(setApiConnected);
+    void fetchHistoricalSamples().then((samples) => {
+      if (samples && samples.length > 0) {
+        setHistoricalSamples(samples);
+      }
+    });
   }, []);
 
   // Compute chart trajectory combining observed 96 steps + 24h predictions
@@ -319,16 +460,21 @@ export default function Home() {
     const sm5Arr = currentInput.features.SM_5cm;
     const lastSM50 = sm50Arr.at(-1) || 20.0;
     const targetPred = prediction ? prediction.predicted_sm_50cm : lastSM50 - 0.5;
+    const actualTarget =
+      inputMode === "historical" && activeHistoricalDetail
+        ? activeHistoricalDetail.actual_future_sm_50cm
+        : null;
 
     // Past 24h downsampled to hourly (every 4th 15-min point)
     for (let i = 0; i < 96; i += 4) {
-      const hoursAgo = Math.round((96 - i) * 15 / 60);
+      const hoursAgo = Math.round(((96 - i) * 15) / 60);
       points.push({
         label: `-${hoursAgo}h`,
         observed50: sm50Arr[i],
         observed5: sm5Arr[i],
         predictedLSTM: null,
         persistence: null,
+        actualGroundTruth: null,
       });
     }
 
@@ -339,6 +485,7 @@ export default function Home() {
       observed5: sm5Arr.at(-1) || lastSM50,
       predictedLSTM: lastSM50,
       persistence: lastSM50,
+      actualGroundTruth: null,
     });
 
     // Future 24h predictions (hourly trajectory from Now to +24h)
@@ -355,21 +502,28 @@ export default function Home() {
         observed5: null,
         predictedLSTM: lstmVal,
         persistence: persVal,
+        actualGroundTruth: h === 23 || h === 24 ? actualTarget : null,
       });
     }
 
     return points;
-  }, [currentInput, prediction]);
+  }, [currentInput, prediction, inputMode, activeHistoricalDetail]);
 
-  // Data table rows
-  const tableRows = useMemo(() => {
+  // Data table rows with search & pagination
+  const allTableRows = useMemo(() => {
     if (!currentInput) return [];
     const rows = [];
     for (let i = 0; i < currentInput.timestamps.length; i++) {
-      const ts = new Date(currentInput.timestamps[i]);
+      const rawTs = currentInput.timestamps[i];
+      const parsed = new Date(rawTs);
+      const timeStr = isNaN(parsed.getTime())
+        ? rawTs.slice(11, 16) || rawTs
+        : parsed.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false });
+
       rows.push({
         step: i + 1,
-        time: ts.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit", hour12: false }),
+        time: timeStr,
+        fullTs: rawTs,
         sm50: currentInput.features.SM_50cm[i],
         sm5: currentInput.features.SM_5cm[i],
         temp50: currentInput.features.Temp_50cm[i],
@@ -377,21 +531,32 @@ export default function Home() {
         rain: currentInput.features.Precipitation[i],
       });
     }
-    const filtered = rows.filter((r) => r.time.includes(searchQuery));
+    const filtered = rows.filter((r) => r.time.includes(searchQuery) || r.fullTs.includes(searchQuery));
     return sortAsc ? filtered : filtered.reverse();
   }, [currentInput, searchQuery, sortAsc]);
 
+  const totalPages = Math.max(1, Math.ceil(allTableRows.length / PAGE_SIZE));
+  const paginatedRows = useMemo(() => {
+    const start = (tablePage - 1) * PAGE_SIZE;
+    return allTableRows.slice(start, start + PAGE_SIZE);
+  }, [allTableRows, tablePage]);
+
+  // Reset page to 1 on search or mode change
+  useEffect(() => {
+    setTablePage(1);
+  }, [searchQuery, inputMode, selectedScenario, selectedHistoricalId]);
+
   function exportCsv() {
-    if (!tableRows.length) return;
-    const header = "Step,Time,SM_50cm_Percent,SM_5cm_Percent,Temp_50cm_C,Temp_5cm_C,Precipitation_mm\n";
-    const body = tableRows
-      .map((r) => `${r.step},${r.time},${r.sm50},${r.sm5},${r.temp50},${r.temp5},${r.rain}`)
+    if (!allTableRows.length) return;
+    const header = "Step,Time,Full_Timestamp,SM_50cm_Percent,SM_5cm_Percent,Temp_50cm_C,Temp_5cm_C,Precipitation_mm\n";
+    const body = allTableRows
+      .map((r) => `${r.step},${r.time},${r.fullTs},${r.sm50},${r.sm5},${r.temp50},${r.temp5},${r.rain}`)
       .join("\n");
     const blob = new Blob([header + body], { type: "text/csv;charset=utf-8;" });
     const url = URL.createObjectURL(blob);
     const a = document.createElement("a");
     a.href = url;
-    a.download = `soilcast-${selectedScenario}-simulation.csv`;
+    a.download = `soilcast-${inputMode === "historical" ? selectedHistoricalId : selectedScenario}-96steps.csv`;
     a.click();
     URL.revokeObjectURL(url);
   }
@@ -479,7 +644,13 @@ export default function Home() {
             <button
               className="refresh"
               disabled={busy}
-              onClick={() => triggerSimulation(selectedScenario)}
+              onClick={() => {
+                if (inputMode === "simulation") {
+                  void triggerSimulation(selectedScenario);
+                } else {
+                  void triggerHistoricalReplay(selectedHistoricalId);
+                }
+              }}
               title="Re-run neural inference"
             >
               <RefreshCw size={13} className={busy ? "spin" : ""} />
@@ -526,121 +697,185 @@ export default function Home() {
           {/* PAGE 1: SIMULATION & INFERENCE ENGINE */}
           {page === "Simulation & Inference" && (
             <>
-              {/* Scenario Selector */}
+              {/* Section 01: Mode Switcher & Scenarios */}
               <div className="section">
                 <span>01</span>
-                <h2>SELECT AGRICULTURAL SCENARIO</h2>
+                <h2>DATA INPUT MODE & SCENARIO SELECTION</h2>
                 <i />
-                <small>SIMULATE ENVIRONMENTAL INPUTS</small>
+                <small>EVALUATE NEURAL INFERENCE</small>
               </div>
 
-              <div className="scenario-grid">
-                {PRESET_SCENARIOS.map((sc) => {
-                  const isActive = selectedScenario === sc.id;
-                  return (
-                    <button
-                      key={sc.id}
-                      className={`scenario-card ${isActive ? "active" : ""}`}
-                      onClick={() => {
-                        setSelectedScenario(sc.id);
-                        void triggerSimulation(sc.id);
-                      }}
-                    >
-                      <div className="scenario-card-head">
-                        <span
-                          className={`scenario-icon ${
-                            sc.id === "drought"
-                              ? "bg-amber-100 text-amber-700"
-                              : sc.id === "storm"
-                              ? "bg-blue-100 text-blue-700"
-                              : sc.id === "drying"
-                              ? "bg-emerald-100 text-emerald-700"
-                              : "bg-purple-100 text-purple-700"
-                          }`}
+              {/* Mode Switcher Tabs */}
+              <div className="mode-switcher">
+                <button
+                  className={`mode-btn ${inputMode === "simulation" ? "active" : ""}`}
+                  onClick={() => handleModeChange("simulation")}
+                >
+                  <span className="mode-btn-icon">
+                    <SlidersHorizontal size={18} />
+                  </span>
+                  <div className="mode-btn-content">
+                    <strong>Mode A: Custom Simulation</strong>
+                    <small>Generate physical scenarios or tweak moisture, temperature & rain sliders</small>
+                  </div>
+                </button>
+
+                <button
+                  className={`mode-btn ${inputMode === "historical" ? "active" : ""}`}
+                  onClick={() => handleModeChange("historical")}
+                >
+                  <span className="mode-btn-icon">
+                    <History size={18} />
+                  </span>
+                  <div className="mode-btn-content">
+                    <strong>Mode B: Historical Dataset Replay</strong>
+                    <small>Replay 5 real held-out test windows from 2024 test split with retrospective evaluation</small>
+                  </div>
+                </button>
+              </div>
+
+              {/* Mode A: Preset Simulation Scenarios */}
+              {inputMode === "simulation" && (
+                <>
+                  <div className="scenario-grid">
+                    {PRESET_SCENARIOS.map((sc) => {
+                      const isActive = selectedScenario === sc.id;
+                      return (
+                        <button
+                          key={sc.id}
+                          className={`scenario-card ${isActive ? "active" : ""}`}
+                          onClick={() => {
+                            setSelectedScenario(sc.id);
+                            void triggerSimulation(sc.id);
+                          }}
                         >
-                          {sc.id === "drought" ? (
-                            <Sun size={17} />
-                          ) : sc.id === "storm" ? (
-                            <CloudRain size={17} />
-                          ) : sc.id === "drying" ? (
-                            <Sprout size={17} />
-                          ) : (
-                            <SlidersHorizontal size={17} />
-                          )}
-                        </span>
-                        <span className={`scenario-badge border ${sc.badgeColor}`}>{sc.badge}</span>
-                      </div>
-                      <strong>{sc.title}</strong>
-                      <p>{sc.description}</p>
-                    </button>
-                  );
-                })}
-              </div>
+                          <div className="scenario-card-head">
+                            <span
+                              className={`scenario-icon ${
+                                sc.id === "drought"
+                                  ? "bg-amber-100 text-amber-700"
+                                  : sc.id === "storm"
+                                  ? "bg-blue-100 text-blue-700"
+                                  : sc.id === "drying"
+                                  ? "bg-emerald-100 text-emerald-700"
+                                  : "bg-purple-100 text-purple-700"
+                              }`}
+                            >
+                              {sc.id === "drought" ? (
+                                <Sun size={17} />
+                              ) : sc.id === "storm" ? (
+                                <CloudRain size={17} />
+                              ) : sc.id === "drying" ? (
+                                <Sprout size={17} />
+                              ) : (
+                                <SlidersHorizontal size={17} />
+                              )}
+                            </span>
+                            <span className={`scenario-badge border ${sc.badgeColor}`}>{sc.badge}</span>
+                          </div>
+                          <strong>{sc.title}</strong>
+                          <p>{sc.description}</p>
+                        </button>
+                      );
+                    })}
+                  </div>
 
-              {/* Custom Tuner Sliders if Custom selected */}
-              {selectedScenario === "custom" && (
-                <div className="tuner-grid">
-                  <div className="tuner-control">
-                    <label>
-                      <span>Root Moisture (50 cm)</span>
-                      <b>{customSM50}%</b>
-                    </label>
-                    <input
-                      type="range"
-                      min="8"
-                      max="40"
-                      step="0.5"
-                      value={customSM50}
-                      onChange={(e) => setCustomSM50(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="tuner-control">
-                    <label>
-                      <span>Surface Moisture (5 cm)</span>
-                      <b>{customSM5} %</b>
-                    </label>
-                    <input
-                      type="range"
-                      min="5"
-                      max="45"
-                      step="0.5"
-                      value={customSM5}
-                      onChange={(e) => setCustomSM5(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="tuner-control">
-                    <label>
-                      <span>Soil Temperature (50 cm)</span>
-                      <b>{customT50} °C</b>
-                    </label>
-                    <input
-                      type="range"
-                      min="18"
-                      max="35"
-                      step="0.5"
-                      value={customT50}
-                      onChange={(e) => setCustomT50(Number(e.target.value))}
-                    />
-                  </div>
-                  <div className="tuner-control">
-                    <label>
-                      <span>Rainfall Event</span>
-                      <b>{customRain} mm</b>
-                    </label>
-                    <input
-                      type="range"
-                      min="0"
-                      max="40"
-                      step="1"
-                      value={customRain}
-                      onChange={(e) => setCustomRain(Number(e.target.value))}
-                    />
-                  </div>
-                  <div style={{ gridColumn: "1 / -1", textAlign: "right", marginTop: "4px" }}>
-                    <button className="primary-btn" onClick={() => triggerSimulation("custom")} disabled={busy}>
-                      <Sparkles size={14} /> Run Neural Inference on Custom State
-                    </button>
-                  </div>
+                  {/* Custom Tuner Sliders if Custom selected */}
+                  {selectedScenario === "custom" && (
+                    <div className="tuner-grid">
+                      <div className="tuner-control">
+                        <label>
+                          <span>Root Moisture (50 cm)</span>
+                          <b>{customSM50}%</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="8"
+                          max="40"
+                          step="0.5"
+                          value={customSM50}
+                          onChange={(e) => setCustomSM50(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="tuner-control">
+                        <label>
+                          <span>Surface Moisture (5 cm)</span>
+                          <b>{customSM5} %</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="5"
+                          max="45"
+                          step="0.5"
+                          value={customSM5}
+                          onChange={(e) => setCustomSM5(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="tuner-control">
+                        <label>
+                          <span>Soil Temperature (50 cm)</span>
+                          <b>{customT50} °C</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="18"
+                          max="35"
+                          step="0.5"
+                          value={customT50}
+                          onChange={(e) => setCustomT50(Number(e.target.value))}
+                        />
+                      </div>
+                      <div className="tuner-control">
+                        <label>
+                          <span>Rainfall Event</span>
+                          <b>{customRain} mm</b>
+                        </label>
+                        <input
+                          type="range"
+                          min="0"
+                          max="40"
+                          step="1"
+                          value={customRain}
+                          onChange={(e) => setCustomRain(Number(e.target.value))}
+                        />
+                      </div>
+                      <div style={{ gridColumn: "1 / -1", textAlign: "right", marginTop: "4px" }}>
+                        <button className="primary-btn" onClick={() => triggerSimulation("custom")} disabled={busy}>
+                          <Sparkles size={14} /> Run Neural Inference on Custom State
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* Mode B: Historical Test Samples */}
+              {inputMode === "historical" && (
+                <div className="scenario-grid five-col">
+                  {historicalSamples.map((sample) => {
+                    const isActive = selectedHistoricalId === sample.id;
+                    return (
+                      <button
+                        key={sample.id}
+                        className={`scenario-card ${isActive ? "active" : ""}`}
+                        onClick={() => void triggerHistoricalReplay(sample.id)}
+                      >
+                        <div className="scenario-card-head">
+                          <span className="scenario-icon bg-teal-100 text-teal-700">
+                            <History size={17} />
+                          </span>
+                          <span className={`scenario-badge border ${sample.badgeColor}`}>{sample.badge}</span>
+                        </div>
+                        <strong>{sample.title}</strong>
+                        <p>{sample.description}</p>
+                        <div style={{ marginTop: "8px", fontSize: "10px", color: "#6e809c", display: "flex", justifyContent: "space-between", borderTop: "1px dashed #e2e8f1", paddingTop: "6px" }}>
+                          <span>Start: <b>{sample.current_sm_50cm.toFixed(1)}%</b></span>
+                          <span>Target: <b>{sample.actual_future_sm_50cm.toFixed(1)}%</b></span>
+                          <span>Rain: <b>{sample.historical_rain_24h_mm.toFixed(1)}mm</b></span>
+                        </div>
+                      </button>
+                    );
+                  })}
                 </div>
               )}
 
@@ -649,7 +884,7 @@ export default function Home() {
                 <span>02</span>
                 <h2>INFERENCE OUTCOMES & ADVISORY</h2>
                 <i />
-                <small>24-HOUR ADVANCE WARNING</small>
+                <small>24-HOUR ADVANCE FORECAST</small>
               </div>
 
               <div className="metrics">
@@ -707,14 +942,46 @@ export default function Home() {
                     <span className="metric-icon violet">
                       <Clock3 size={19} />
                     </span>
-                    <small>Cadence</small>
+                    <small>Source Mode</small>
                   </div>
-                  <p>Input Sliding Window</p>
+                  <p>{inputMode === "historical" ? "Real 2024 Test Set" : "Synthetic Simulation"}</p>
                   <strong>
                     96<i> steps</i>
                   </strong>
                 </div>
               </div>
+
+              {/* Mode B Retrospective Ground-Truth Comparison Banner */}
+              {inputMode === "historical" && activeHistoricalDetail && prediction && (
+                <div className="retrospective-banner">
+                  <div className="retrospective-left">
+                    <span className="panel-icon mint" style={{ width: "36px", height: "36px" }}>
+                      <FlaskConical size={18} />
+                    </span>
+                    <div>
+                      <strong>Ground-Truth Retrospective Evaluation ({activeHistoricalDetail.id})</strong>
+                      <p>
+                        Window: {activeHistoricalDetail.input_start} to {activeHistoricalDetail.input_end} · Target at {activeHistoricalDetail.target_timestamp}
+                      </p>
+                    </div>
+                  </div>
+
+                  <div className="retrospective-stats">
+                    <div className="retrospective-stat">
+                      <b>{activeHistoricalDetail.actual_future_sm_50cm.toFixed(2)}%</b>
+                      <small>Actual Ground Truth (y)</small>
+                    </div>
+                    <div className="retrospective-stat">
+                      <b>{prediction.predicted_sm_50cm.toFixed(2)}%</b>
+                      <small>Model Forecast (ŷ)</small>
+                    </div>
+                    <div className="retrospective-stat">
+                      <b>{Math.abs(activeHistoricalDetail.actual_future_sm_50cm - prediction.predicted_sm_50cm).toFixed(2)} pp</b>
+                      <small>Absolute Error |y - ŷ|</small>
+                    </div>
+                  </div>
+                </div>
+              )}
 
               {/* Primary Trajectory Grid */}
               <div className="primary-grid">
@@ -744,6 +1011,11 @@ export default function Home() {
                     <span>
                       <i className="persistence-dot" /> Naïve Persistence Baseline
                     </span>
+                    {inputMode === "historical" && (
+                      <span>
+                        <i style={{ width: "8px", height: "8px", borderRadius: "50%", background: "#16a34a", display: "inline-block" }} /> Recorded Target (Ground Truth)
+                      </span>
+                    )}
                   </div>
 
                   <div className="chart h250">
@@ -805,6 +1077,16 @@ export default function Home() {
                           strokeDasharray="3 3"
                           connectNulls={false}
                         />
+                        {inputMode === "historical" && (
+                          <Line
+                            dataKey="actualGroundTruth"
+                            name="Actual Ground Truth (24h)"
+                            stroke="#16a34a"
+                            strokeWidth={0}
+                            dot={{ r: 6, fill: "#16a34a", stroke: "#ffffff", strokeWidth: 2 }}
+                            connectNulls={false}
+                          />
+                        )}
                       </LineChart>
                     </ResponsiveContainer>
                   </div>
@@ -828,7 +1110,7 @@ export default function Home() {
                     <span className="panel-icon amber">
                       <Sprout size={17} />
                     </span>
-                    <h2>Irrigation Advisory</h2>
+                    <h2>Irrigation Advisory & Decision Support</h2>
                   </div>
                   <p className="sub">Threshold-based agronomic guidance for 50 cm root zone</p>
 
@@ -882,10 +1164,36 @@ export default function Home() {
                     </div>
                   )}
 
-                  <div style={{ marginTop: "14px", display: "flex", justifyContent: "space-between", fontSize: "10px", color: "#8291a7" }}>
-                    <span>Wilting Point: <b>10.0%</b></span>
-                    <span>Optimal: <b>18.0% – 28.0%</b></span>
-                    <span>Field Capacity: <b>35.0%</b></span>
+                  {/* Standard Decision Bounds Legend */}
+                  <div
+                    style={{
+                      marginTop: "14px",
+                      display: "grid",
+                      gridTemplateColumns: "repeat(4, 1fr)",
+                      gap: "6px",
+                      fontSize: "10px",
+                      color: "#8291a7",
+                      textAlign: "center",
+                      borderTop: "1px solid #edf1f7",
+                      paddingTop: "10px",
+                    }}
+                  >
+                    <div>
+                      <span style={{ display: "block", color: "#d9534f", fontWeight: 700 }}>&lt; 10.0%</span>
+                      <span>Wilting Point</span>
+                    </div>
+                    <div>
+                      <span style={{ display: "block", color: "#d97736", fontWeight: 700 }}>10.0% – 18.0%</span>
+                      <span>Deficit Alert</span>
+                    </div>
+                    <div>
+                      <span style={{ display: "block", color: "#24817a", fontWeight: 700 }}>18.0% – 35.0%</span>
+                      <span>Optimal Zone</span>
+                    </div>
+                    <div>
+                      <span style={{ display: "block", color: "#3d97e8", fontWeight: 700 }}>&gt; 35.0%</span>
+                      <span>Field Capacity</span>
+                    </div>
                   </div>
                 </article>
               </div>
@@ -910,7 +1218,10 @@ export default function Home() {
 
                 <div className="chart h280">
                   <ResponsiveContainer width="100%" height="100%">
-                    <AreaChart data={chartTrajectory.filter((p) => p.observed50 !== null)} margin={{ top: 12, right: 12, left: -16, bottom: 0 }}>
+                    <AreaChart
+                      data={chartTrajectory.filter((p) => p.observed50 !== null)}
+                      margin={{ top: 12, right: 12, left: -16, bottom: 0 }}
+                    >
                       <defs>
                         <linearGradient id="colorSM5" x1="0" y1="0" x2="0" y2="1">
                           <stop offset="5%" stopColor="#3d97e8" stopOpacity={0.25} />
@@ -1126,12 +1437,12 @@ export default function Home() {
                   </div>
                   <div className="compare-row">
                     <span><b>Optimal Root Zone</b></span>
-                    <span>18.0% – 28.0%</span>
+                    <span>18.0% – 35.0%</span>
                     <span>Ideal water availability for transpiration and nutrient uptake. Standard crop growth.</span>
                   </div>
                   <div className="compare-row">
                     <span><b>Management Allowed Depletion (MAD)</b></span>
-                    <span>14.0% – 18.0%</span>
+                    <span>10.0% – 18.0%</span>
                     <span>Deficit alert zone. Irrigation should be scheduled within 24 hours to prevent stress.</span>
                   </div>
                   <div className="compare-row">
@@ -1164,22 +1475,37 @@ export default function Home() {
                     <span className="panel-icon blue">
                       <Database size={18} />
                     </span>
-                    <h2>Simulated Scenario Sensor Sequence (96 Time-Steps)</h2>
+                    <h2>Scenario Sensor Sequence (96 Time-Steps, 15m Cadence)</h2>
                   </div>
-                  <p>Inspect the high-frequency 15-minute sliding input window fed to the PyTorch LSTM model</p>
+                  <p>
+                    Inspect, paginate, filter, and export the sliding input window fed to the PyTorch LSTM model (
+                    {inputMode === "historical" ? `Historical: ${selectedHistoricalId}` : `Simulation: ${selectedScenario}`})
+                  </p>
                 </div>
                 <button className="primary-btn" onClick={exportCsv}>
-                  <Download size={14} /> Export CSV
+                  <Download size={14} /> Export CSV ({allTableRows.length} rows)
                 </button>
               </div>
 
-              <div style={{ display: "flex", gap: "10px", margin: "14px 0", alignItems: "center" }}>
-                <div style={{ display: "flex", alignItems: "center", gap: "8px", padding: "8px 12px", border: "1px solid #dce3ed", borderRadius: "8px", background: "#fff", flex: 1, maxWidth: "280px" }}>
+              <div style={{ display: "flex", gap: "10px", margin: "14px 0", alignItems: "center", flexWrap: "wrap" }}>
+                <div
+                  style={{
+                    display: "flex",
+                    alignItems: "center",
+                    gap: "8px",
+                    padding: "8px 12px",
+                    border: "1px solid #dce3ed",
+                    borderRadius: "8px",
+                    background: "#fff",
+                    flex: 1,
+                    maxWidth: "280px",
+                  }}
+                >
                   <Search size={14} color="#8a98ad" />
                   <input
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Search time (e.g. 14:00)..."
+                    placeholder="Search time or date..."
                     style={{ border: 0, outline: 0, fontSize: "11px", width: "100%" }}
                   />
                 </div>
@@ -1187,7 +1513,7 @@ export default function Home() {
                   Sort {sortAsc ? "Oldest First ↑" : "Newest First ↓"}
                 </button>
                 <small style={{ color: "#8a98ad", marginLeft: "auto" }}>
-                  Showing {tableRows.length} of 96 observations
+                  Total Observations: <b>{allTableRows.length}</b> (24 hours at 15m interval)
                 </small>
               </div>
 
@@ -1205,7 +1531,7 @@ export default function Home() {
                     </tr>
                   </thead>
                   <tbody>
-                    {tableRows.slice(0, 30).map((r) => (
+                    {paginatedRows.map((r) => (
                       <tr key={r.step} style={{ borderBottom: "1px solid #edf1f7" }}>
                         <td style={{ padding: "9px 12px", color: "#8897ad" }}>#{r.step}</td>
                         <td style={{ padding: "9px 12px", fontWeight: 700, color: "#25344f" }}>{r.time}</td>
@@ -1220,6 +1546,35 @@ export default function Home() {
                     ))}
                   </tbody>
                 </table>
+              </div>
+
+              {/* Pagination Controls */}
+              <div className="pagination-bar">
+                <span>
+                  Showing {allTableRows.length > 0 ? (tablePage - 1) * PAGE_SIZE + 1 : 0} –{" "}
+                  {Math.min(tablePage * PAGE_SIZE, allTableRows.length)} of {allTableRows.length} observations
+                </span>
+                <div className="pagination-controls">
+                  <button
+                    className="outline-btn"
+                    disabled={tablePage === 1}
+                    onClick={() => setTablePage((p) => Math.max(1, p - 1))}
+                    style={{ padding: "4px 8px", fontSize: "11px" }}
+                  >
+                    <ChevronLeft size={13} style={{ display: "inline", verticalAlign: "middle" }} /> Prev
+                  </button>
+                  <span style={{ fontWeight: 700, margin: "0 4px" }}>
+                    Page {tablePage} of {totalPages}
+                  </span>
+                  <button
+                    className="outline-btn"
+                    disabled={tablePage >= totalPages}
+                    onClick={() => setTablePage((p) => Math.min(totalPages, p + 1))}
+                    style={{ padding: "4px 8px", fontSize: "11px" }}
+                  >
+                    Next <ChevronRight size={13} style={{ display: "inline", verticalAlign: "middle" }} />
+                  </button>
+                </div>
               </div>
             </article>
           )}

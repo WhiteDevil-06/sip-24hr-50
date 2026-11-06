@@ -794,6 +794,143 @@ button:focus-visible, input:focus-visible, select:focus-visible {
   font-weight: 800;
 }
 
+/* Mode Switcher: Custom Simulation vs Historical Replay */
+.mode-switcher {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 12px;
+  margin-top: 14px;
+}
+
+.mode-btn {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  border: 1.5px solid #dce4ef;
+  border-radius: 12px;
+  background: #ffffff;
+  text-align: left;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.mode-btn:hover {
+  border-color: #79cbba;
+  background: #fbfdfc;
+  transform: translateY(-1px);
+}
+
+.mode-btn.active {
+  border-color: #24817a;
+  background: linear-gradient(150deg, #f0faf7 0%, #ffffff 90%);
+  box-shadow: 0 0 0 2px rgba(36, 129, 122, 0.18), 0 4px 12px rgba(36, 129, 122, 0.08);
+}
+
+.mode-btn-icon {
+  display: grid;
+  place-items: center;
+  width: 38px;
+  height: 38px;
+  border-radius: 10px;
+  background: #edf6f4;
+  color: #24817a;
+  flex-shrink: 0;
+}
+
+.mode-btn.active .mode-btn-icon {
+  background: #24817a;
+  color: #ffffff;
+}
+
+.mode-btn-content {
+  display: flex;
+  flex-direction: column;
+}
+
+.mode-btn-content strong {
+  color: #1f2c44;
+  font: 700 13px 'Manrope', sans-serif;
+}
+
+.mode-btn-content small {
+  color: #73859f;
+  font-size: 10.5px;
+  margin-top: 2px;
+}
+
+.scenario-grid.five-col {
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+}
+
+/* Retrospective Evaluation Card */
+.retrospective-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px 16px;
+  margin-top: 14px;
+  border: 1.5px solid #c7e5df;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #f3fcf9 0%, #ebf8f5 100%);
+  color: #1a4f49;
+}
+
+.retrospective-left {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.retrospective-left strong {
+  display: block;
+  font: 700 12.5px 'Manrope', sans-serif;
+  color: #174c46;
+}
+
+.retrospective-left p {
+  margin: 2px 0 0;
+  font-size: 11px;
+  color: #4b7872;
+}
+
+.retrospective-stats {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  text-align: right;
+}
+
+.retrospective-stat b {
+  display: block;
+  font: 800 14px 'Manrope', sans-serif;
+  color: #154640;
+}
+
+.retrospective-stat small {
+  font-size: 9.5px;
+  color: #5c8b85;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+
+/* Pagination Bar */
+.pagination-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-top: 12px;
+  padding: 10px 14px;
+  border-top: 1px solid #edf1f7;
+  font-size: 11px;
+  color: #75869e;
+}
+
+.pagination-controls {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
 /* Simulation Scenario Selector */
 .scenario-grid {
   display: grid;

@@ -179,3 +179,96 @@ class TestForecastEndpoint:
         assert data["target"] == "SM_50cm"
         assert len(data["observed"]) == 96
         assert len(data["predictions"]) >= 1
+
+
+class TestHistoricalSamples:
+    def test_list_historical_samples(self):
+        r = client.get("/api/v1/historical-samples")
+        assert r.status_code == 200
+        samples = r.json()
+        assert len(samples) >= 3
+        # Check required fields
+        first = samples[0]
+        for field in ("id", "title", "badge", "input_start", "input_end", "target_timestamp", "current_sm_50cm", "actual_future_sm_50cm"):
+            assert field in first, f"Missing field '{field}' in historical sample summary"
+
+    def test_get_historical_sample_detail(self):
+        r = client.get("/api/v1/historical-samples/HIST-001-DROUGHT")
+        assert r.status_code == 200
+        detail = r.json()
+        assert detail["id"] == "HIST-001-DROUGHT"
+        assert len(detail["timestamps"]) == 96
+        assert "SM_50cm" in detail["features"]
+        assert len(detail["features"]["SM_50cm"]) == 96
+        assert len(detail["features"]["Precipitation"]) == 96
+
+    def test_historical_sample_not_found(self):
+        r = client.get("/api/v1/historical-samples/NONEXISTENT_SAMPLE_XYZ")
+        assert r.status_code == 404
+
+    def test_historical_sample_inference_end_to_end(self):
+        """Historical sample can be fed directly to /api/v1/predict without lookahead leakage."""
+        r_sample = client.get("/api/v1/historical-samples/HIST-001-DROUGHT")
+        assert r_sample.status_code == 200
+        sample_data = r_sample.json()
+
+        payload = {
+            "timestamps": sample_data["timestamps"],
+            "features": sample_data["features"]
+        }
+        r_pred = client.post("/api/v1/predict", json=payload)
+        assert r_pred.status_code == 200
+        pred_data = r_pred.json()
+        assert "predicted_sm_50cm" in pred_data
+        assert pred_data["irrigation_advisory"]["recommendation"] in (
+            "CRITICAL_DEFICIT", "DEFICIT_ALERT", "OPTIMAL_MOISTURE", "EXCESS_MOISTURE"
+        )
+
+
+class TestIrrigationThresholds:
+    """Explicit tests for all decision boundaries defined in Phase 3."""
+
+    def test_boundary_critical_deficit(self):
+        from app.inference import build_irrigation_advisory
+        from app.model_loader import get_model_meta
+        meta = get_model_meta()
+
+        # 9.5% is below wilting point (10.0%)
+        adv = build_irrigation_advisory(current_sm=11.0, predicted_sm=9.5, meta=meta)
+        assert adv["recommendation"] == "CRITICAL_DEFICIT"
+        assert adv["action_required"] is True
+        assert adv["urgency"] == "immediate"
+
+    def test_boundary_deficit_alert(self):
+        from app.inference import build_irrigation_advisory
+        from app.model_loader import get_model_meta
+        meta = get_model_meta()
+
+        # 14.5% is between wilting (10.0%) and optimal min (18.0%)
+        adv = build_irrigation_advisory(current_sm=16.0, predicted_sm=14.5, meta=meta)
+        assert adv["recommendation"] == "DEFICIT_ALERT"
+        assert adv["action_required"] is True
+        assert adv["urgency"] == "high"
+
+    def test_boundary_optimal_moisture(self):
+        from app.inference import build_irrigation_advisory
+        from app.model_loader import get_model_meta
+        meta = get_model_meta()
+
+        # 22.0% is in optimal band (18.0% - 28.0% up to FC 35.0%)
+        adv = build_irrigation_advisory(current_sm=23.0, predicted_sm=22.0, meta=meta)
+        assert adv["recommendation"] == "OPTIMAL_MOISTURE"
+        assert adv["action_required"] is False
+        assert adv["urgency"] == "none"
+
+    def test_boundary_excess_moisture(self):
+        from app.inference import build_irrigation_advisory
+        from app.model_loader import get_model_meta
+        meta = get_model_meta()
+
+        # 36.5% is above field capacity (35.0%)
+        adv = build_irrigation_advisory(current_sm=34.0, predicted_sm=36.5, meta=meta)
+        assert adv["recommendation"] == "EXCESS_MOISTURE"
+        assert adv["action_required"] is False
+        assert adv["urgency"] == "none"
+

@@ -109,3 +109,61 @@ export async function runPrediction(payload: PredictPayload): Promise<PredictRes
 export function getApiConfigured(): boolean {
   return Boolean(base);
 }
+
+// ---------------------------------------------------------------------------
+// Historical Dataset Replay Types & Client Methods (Phase 2)
+// ---------------------------------------------------------------------------
+
+export type HistoricalSampleSummary = {
+  id: string;
+  title: string;
+  badge: string;
+  badgeColor: string;
+  description: string;
+  input_start: string;
+  input_end: string;
+  target_timestamp: string;
+  current_sm_50cm: number;
+  actual_future_sm_50cm: number;
+  historical_rain_24h_mm: number;
+};
+
+export type HistoricalSampleDetail = HistoricalSampleSummary & {
+  timestamps: string[];
+  features: {
+    SM_50cm: number[];
+    SM_5cm: number[];
+    Temp_50cm: number[];
+    Temp_5cm: number[];
+    Precipitation: number[];
+  };
+};
+
+export async function fetchHistoricalSamples(): Promise<HistoricalSampleSummary[]> {
+  if (!base) return [];
+
+  const response = await fetch(`${base}/api/v1/historical-samples`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Historical samples API returned ${response.status}`);
+  }
+
+  return response.json();
+}
+
+export async function fetchHistoricalSample(sampleId: string): Promise<HistoricalSampleDetail | null> {
+  if (!base) return null;
+
+  const response = await fetch(`${base}/api/v1/historical-samples/${encodeURIComponent(sampleId)}`, {
+    cache: "no-store",
+  });
+
+  if (!response.ok) {
+    throw new Error(`Historical sample '${sampleId}' returned ${response.status}`);
+  }
+
+  return response.json();
+}
+

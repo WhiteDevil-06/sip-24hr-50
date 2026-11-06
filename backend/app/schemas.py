@@ -142,3 +142,27 @@ class ForecastApiResponse(BaseModel):
     predictions: List[Observation]
     metrics: dict | None = None
     baseline: dict | None = None
+
+
+# ---------------------------------------------------------------------------
+# Historical Sample Schemas (Phase 2 Replay Mode)
+# ---------------------------------------------------------------------------
+
+class HistoricalSampleSummary(BaseModel):
+    id: str
+    title: str
+    badge: str
+    badgeColor: str
+    description: str
+    input_start: str
+    input_end: str
+    target_timestamp: str
+    current_sm_50cm: float
+    actual_future_sm_50cm: float
+    historical_rain_24h_mm: float
+
+
+class HistoricalSampleDetail(HistoricalSampleSummary):
+    timestamps: List[str]
+    features: dict[str, List[float]]
+

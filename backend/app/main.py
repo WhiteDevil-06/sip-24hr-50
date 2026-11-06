@@ -9,9 +9,12 @@ Endpoints (per frozen API_CONTRACT.md):
   GET  /api/health            ← Phase 8 frontend health alias
 """
 
+import json
 import math
 from contextlib import asynccontextmanager
 from datetime import datetime, timedelta, timezone
+from pathlib import Path
+from typing import List
 
 import numpy as np
 import torch
@@ -35,6 +38,8 @@ from app.model_loader import (
 from app.schemas import (
     ForecastApiResponse,
     HealthResponse,
+    HistoricalSampleDetail,
+    HistoricalSampleSummary,
     IrrigationAdvisory,
     MetricsResponse,
     Observation,
@@ -81,6 +86,7 @@ def root() -> dict:
         "forecast_url": "/api/forecast",
         "metrics_url": "/api/v1/metrics",
         "predict_url": "/api/v1/predict",
+        "historical_samples_url": "/api/v1/historical-samples",
     }
 
 
@@ -161,6 +167,67 @@ def predict(body: PredictRequest) -> PredictResponse:
         predicted_change_24h=round(pred_sm - current_sm, 6),
         irrigation_advisory=IrrigationAdvisory(**advisory),
     )
+
+
+# ---------------------------------------------------------------------------
+# Historical Dataset Replay Samples (Phase 2)
+# ---------------------------------------------------------------------------
+
+HISTORICAL_SAMPLES_FILE = Path(__file__).resolve().parent.parent.parent / "data" / "historical_samples.json"
+_historical_samples_cache: List[dict] | None = None
+
+
+def get_historical_samples() -> List[dict]:
+    global _historical_samples_cache
+    if _historical_samples_cache is None:
+        if HISTORICAL_SAMPLES_FILE.exists():
+            with open(HISTORICAL_SAMPLES_FILE, "r", encoding="utf-8") as f:
+                _historical_samples_cache = json.load(f)
+        else:
+            _historical_samples_cache = []
+    return _historical_samples_cache
+
+
+@app.get("/api/v1/historical-samples", response_model=List[HistoricalSampleSummary], tags=["historical"])
+def list_historical_samples() -> List[HistoricalSampleSummary]:
+    """
+    Return available representative historical observation windows from the
+    held-out IISc Berambadi test set (2024–2025).
+    """
+    samples = get_historical_samples()
+    return [
+        HistoricalSampleSummary(
+            id=s["id"],
+            title=s["title"],
+            badge=s["badge"],
+            badgeColor=s["badgeColor"],
+            description=s["description"],
+            input_start=s["input_start"],
+            input_end=s["input_end"],
+            target_timestamp=s["target_timestamp"],
+            current_sm_50cm=s["current_sm_50cm"],
+            actual_future_sm_50cm=s["actual_future_sm_50cm"],
+            historical_rain_24h_mm=s["historical_rain_24h_mm"],
+        )
+        for s in samples
+    ]
+
+
+@app.get("/api/v1/historical-samples/{sample_id}", response_model=HistoricalSampleDetail, tags=["historical"])
+def get_historical_sample(sample_id: str) -> HistoricalSampleDetail:
+    """
+    Retrieve full 96-step time-series for a specific historical sample window.
+    Features are returned unscaled for standard submission to POST /api/v1/predict.
+    """
+    samples = get_historical_samples()
+    match = next((s for s in samples if s["id"] == sample_id), None)
+    if not match:
+        raise HTTPException(
+            status_code=404,
+            detail=f"Historical sample '{sample_id}' not found. Available IDs: {[s['id'] for s in samples]}",
+        )
+    return HistoricalSampleDetail(**match)
+
 
 
 # ---------------------------------------------------------------------------

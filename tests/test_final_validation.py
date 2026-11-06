@@ -8,6 +8,7 @@ Checks:
   4. Existing test suite can be discovered
 """
 
+import os
 import re
 import sys
 from pathlib import Path
@@ -31,10 +32,14 @@ SKIP_DIRS = {".git", ".venv", "__pycache__", "node_modules", ".next"}
 
 
 def _text_files():
-    for path in ROOT.rglob("*"):
-        if path.is_file() and not any(d in path.parts for d in SKIP_DIRS):
-            if path.suffix in (".py", ".ts", ".tsx", ".js", ".env", ".json", ".md", ".txt", ".cfg", ".toml"):
-                yield path
+    for root, dirs, files in os.walk(ROOT):
+        # Prune skipped directories in-place so os.walk does not descend into them
+        dirs[:] = [d for d in dirs if d not in SKIP_DIRS]
+        for f in files:
+            p = Path(root) / f
+            if p.suffix in (".py", ".ts", ".tsx", ".js", ".env", ".json", ".md", ".txt", ".cfg", ".toml"):
+                yield p
+
 
 
 class TestSecurity:
