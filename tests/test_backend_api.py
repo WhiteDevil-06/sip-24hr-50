@@ -178,4 +178,4 @@ class TestForecastEndpoint:
         data = r.json()
         assert data["target"] == "SM_50cm"
         assert len(data["observed"]) == 96
-        assert len(data["predictions"]) >= 1
+        assert len(data["predictions"]) == 96

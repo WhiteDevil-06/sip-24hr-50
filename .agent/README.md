@@ -51,8 +51,8 @@ This directory houses the persistent, version-controlled governance system for t
 ```
 
 ## How to Select Your Role
-1. Cloned repos inherit `project-lead` by default from [ACTIVE_ROLE](file:///c:/Users/raksh/ANN/.agent/ACTIVE_ROLE).
-2. To work as Ram Charan or Rahul without dirtying git, create [.agent/ACTIVE_ROLE.local](file:///c:/Users/raksh/ANN/.agent/ACTIVE_ROLE.local):
+1. Cloned repos inherit `project-lead` by default from [ACTIVE_ROLE](ACTIVE_ROLE).
+2. To work as Ram Charan or Rahul without dirtying git, create [.agent/ACTIVE_ROLE.local](ACTIVE_ROLE.local):
    - `website-developer`
    - `ai-backend-developer`
 3. The instruction system checks `.agent/ACTIVE_ROLE.local` first, falling back to `.agent/ACTIVE_ROLE`.

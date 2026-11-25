@@ -230,11 +230,20 @@ def forecast() -> ForecastApiResponse:
     forecast_ts = now + timedelta(hours=24)
 
     observed = [
-        Observation(timestamp=ts, value=SM_DEMO)
-        for ts in observed_timestamps
+        Observation(timestamp=ts, value=round(SM_DEMO + 0.35 * math.sin(i / 8.0), 4))
+        for i, ts in enumerate(observed_timestamps)
     ]
+    # Ensure latest observation is exactly SM_DEMO for seamless forecast continuity
+    observed[-1] = Observation(timestamp=observed_timestamps[-1], value=SM_DEMO)
+
+    # Generate 96 future 15-minute prediction steps leading to pred_sm at t+24h (step 96)
     predictions = [
-        Observation(timestamp=forecast_ts.isoformat(), value=round(pred_sm, 4))
+        Observation(
+            timestamp=(now + timedelta(minutes=15 * step)).isoformat(),
+            value=round(SM_DEMO + (step / 96.0) * (pred_sm - SM_DEMO) + 0.08 * math.sin(step / 6.0) * (1.0 - step / 96.0), 4)
+            if step < 96 else round(pred_sm, 4),
+        )
+        for step in range(1, 97)
     ]
 
     return ForecastApiResponse(

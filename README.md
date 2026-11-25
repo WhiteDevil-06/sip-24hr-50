@@ -41,7 +41,7 @@ The final software application will deliver:
 When team members clone this repository, they must select their active role without overwriting other members' git tracking.
 
 ### Step 1: Check Current Role
-The default role in [.agent/ACTIVE_ROLE](file:///c:/Users/raksh/ANN/.agent/ACTIVE_ROLE) is `project-lead`.
+The default role in [.agent/ACTIVE_ROLE](.agent/ACTIVE_ROLE) is `project-lead`.
 
 ### Step 2: Set Local Role (Recommended for Team Members)
 Create a `.agent/ACTIVE_ROLE.local` file (this file is ignored by Git in `.gitignore`):
@@ -78,7 +78,7 @@ The project advances through 10 strictly gated phases. Advancing to the next pha
 - **Phase 8:** Integration *(APPROVED COMPLETE)*
 - **Phase 9:** Final Validation and Demonstration *(APPROVED COMPLETE)*
 
-See [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) and [.agent/PROJECT_STATE.md](file:///c:/Users/raksh/ANN/.agent/PROJECT_STATE.md) for full status.
+See [.agent/PHASES.md](.agent/PHASES.md) and [.agent/PROJECT_STATE.md](.agent/PROJECT_STATE.md) for full status.
 
 ---
 

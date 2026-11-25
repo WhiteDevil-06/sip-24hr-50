@@ -7,12 +7,12 @@
   - **Phase 8:** Integration (Connecting Frontend and Backend, CORS, E2E Request/Response verification)
   - **Phase 9:** Final Validation & Demonstration (Comprehensive testing, final system validation)
 - **Reference Files:**
-  - [.agent/GLOBAL_RULES.md](file:///c:/Users/raksh/ANN/.agent/GLOBAL_RULES.md)
-  - [.agent/PHASES.md](file:///c:/Users/raksh/ANN/.agent/PHASES.md) (Phases 6, 8, 9 Focus)
-  - [.agent/PROJECT_STATE.md](file:///c:/Users/raksh/ANN/.agent/PROJECT_STATE.md)
-  - [docs/API_CONTRACT.md](file:///c:/Users/raksh/ANN/docs/API_CONTRACT.md) (Frozen Contract)
-  - [models/model_metadata.json](file:///c:/Users/raksh/ANN/models/model_metadata.json) (Handoff Metadata)
-  - [scripts/verify_handoff.py](file:///c:/Users/raksh/ANN/scripts/verify_handoff.py) (Handoff Test Script)
+  - [.agent/GLOBAL_RULES.md](../GLOBAL_RULES.md)
+  - [.agent/PHASES.md](../PHASES.md) (Phases 6, 8, 9 Focus)
+  - [.agent/PROJECT_STATE.md](../PROJECT_STATE.md)
+  - [docs/API_CONTRACT.md](../../docs/API_CONTRACT.md) (Frozen Contract)
+  - [models/model_metadata.json](../../models/model_metadata.json) (Handoff Metadata)
+  - [scripts/verify_handoff.py](../../scripts/verify_handoff.py) (Handoff Test Script)
 
 ---
 

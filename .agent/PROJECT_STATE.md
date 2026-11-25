@@ -32,7 +32,7 @@
 ## 2. Verified Environment & Tooling Facts
 
 All items below have been empirically checked and verified directly on the host machine:
-- **Workspace Directory:** `c:\Users\raksh\ANN` (Verified)
+- **Workspace Directory:** `Repository Root` (Verified)
 - **Git Version Control:** Git repository initialized and connected to `https://github.com/WhiteDevil-06/sip-24hr-50.git` on `main` branch.
 - **Node.js & npm:** Verified executable at `C:\nvm4w\nodejs\node.exe` and `C:\nvm4w\nodejs\npm.cmd`.
 - **Python Runtime:** Python 3.13.3 verified at `%LOCALAPPDATA%\Programs\Python\Python313\python.exe`.
